@@ -1,0 +1,39 @@
+/* يطبق فقط عند body.rtl */
+body.rtl { direction: rtl; text-align: right; }
+
+/* Navbar badges & alignment */
+body.rtl .navbar-nav.ml-auto { margin-left: 0 !important; margin-right: auto !important; }
+body.rtl .navbar-nav .dropdown-menu { text-align: right; right: 0; left: auto; }
+
+/* Chat header / search input alignment */
+body.rtl .form-control, body.rtl input, body.rtl textarea { text-align: right; }
+
+/* Breadcrumb arrow flips */
+body.rtl .breadcrumb-item + .breadcrumb-item::before {
+  content: "\f104"; /* fa-angle-left */
+  font-family: "Font Awesome 5 Free"; font-weight: 900;
+}
+
+/* Sidebar position & layout (AdminLTE 3) */
+body.rtl .main-sidebar { left: auto; right: 0; }
+body.rtl .content-wrapper, body.rtl .main-footer, body.rtl .main-header { margin-left: 0; margin-right: 250px; }
+body.rtl.sidebar-collapse .content-wrapper,
+body.rtl.sidebar-collapse .main-footer,
+body.rtl.sidebar-collapse .main-header { margin-right: 0; }
+
+/* Treeview caret direction */
+body.rtl .nav-sidebar .nav-item > .nav-link .right { left: .5rem; right: auto; transform: scaleX(-1); }
+
+/* Badges position on icons */
+body.rtl .navbar-badge { right: auto; left: 5px; }
+
+/* Dropdown menu icon spacing (icons قبل النص) */
+body.rtl .dropdown-item .fas,
+body.rtl .dropdown-item .far { margin-right: 0; margin-left: .5rem; }
+
+/* Form checks */
+body.rtl .form-check { padding-right: 1.25rem; padding-left: 0; }
+body.rtl .form-check-input { margin-right: -1.25rem; margin-left: 0; }
+
+/* Tables/cards default */
+body.rtl .card-header, body.rtl .card-body, body.rtl table { text-align: right; }

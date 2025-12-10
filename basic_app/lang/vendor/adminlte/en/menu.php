@@ -1,0 +1,45 @@
+<?php
+
+return [
+
+    'company_info'      => 'Company Information',
+    'main_navigation'   => 'Main Navigation',
+    'blog'              => 'Blog',
+    'dashboard'         => 'Dashboard',
+    'branches'          => 'Branches',
+    'users'             => 'Users',
+    'employees'         => 'Employees',
+    'settings'          => 'Settings',
+    'account_settings'  => 'Account Settings',
+    'profile'           => 'Profile',
+    'change_password'   => 'Change Password',
+    'multilevel'        => 'Multi-Level',
+    'pages'             => 'Pages',
+    'level_one'         => 'Level 1',
+    'level_two'         => 'Level 2',
+    'level_three'       => 'Level 3',
+    'labels'            => 'Labels',
+    'important'         => 'Important',
+    'warning'           => 'Warning',
+    'information'       => 'Information',
+
+    'category'          => 'Categories',
+    'size'              => 'Sizes',
+    'additional'        => 'Additions',
+    'type'              => 'Type',
+    'offers'            => 'Offers',
+    'offers_type'       => 'Offer Types',
+    'product'           => 'Product',
+    'products'          => 'Products',
+
+    'permissions'       => 'Permissions',
+    'image'             => 'Image',
+    'modules'           => 'Modules',
+    'orders'            => 'Orders',
+    'order_status'      => 'Order Status',
+    'company_delivery'  => 'Delivery Companies',
+        'payment'=>'payment',
+'regions'=>'Regions',
+
+
+];
