@@ -22,7 +22,8 @@ return [
     'important'         => 'Important',
     'warning'           => 'Warning',
     'information'       => 'Information',
-
+'home_rent_feature'=>'Home Rent Feature',
+'home_rent'=>'Home Rent',
     'category'          => 'Categories',
     'size'              => 'Sizes',
     'additional'        => 'Additions',

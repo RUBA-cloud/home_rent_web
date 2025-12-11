@@ -49,6 +49,8 @@ class ModulesController extends Controller
                         'company_info_module',
                         'company_branch_module',
                         'company_category_module',
+                        'home_rent_module',
+                        'home_rent_feature_module',
                         'company_type_module',
                         'company_size_module',
                         'company_offers_type_module',

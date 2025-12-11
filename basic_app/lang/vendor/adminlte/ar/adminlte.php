@@ -18,7 +18,8 @@ return [
     'company_address_ar' => 'العنوان (بالعربية)',
     'company_location' => 'الموقع',
     'company_location_placeholder' => 'أدخل موقع الشركة',
-
+"home_rent_module"=>'تأجير المنازل',
+'home_rent_feature'=>'ميزة تأجير المنازل',
     // Company Details
     'company_info_details' => 'تفاصيل معلومات الشركة',
     'company_info_updated' => 'تم تحديث معلومات الشركة بنجاح.',

@@ -39,6 +39,18 @@ class MenuBuilder
                 'url'        => '/categories',
                 'icon'       => 'fas fa-fw fa-list',
             ],
+             [
+                'feature'    => 'home_rent_feature_module',
+                'text'       => 'home_rent_feature',
+                'url'        => '/homeRentFeatures',
+                'icon'       => 'fas fa-fw fa-list',
+            ],
+             [
+                'feature'    => 'home_rent_module',
+                'text'       => 'home_rent',
+                'url'        => '/homeRent',
+                'icon'       => 'fas fa-fw fa-list',
+            ],
             [
                 'feature'    => 'company_type_module',
                 'text'       => 'type',

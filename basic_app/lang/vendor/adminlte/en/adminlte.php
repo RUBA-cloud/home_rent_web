@@ -10,6 +10,8 @@ return [
 'facebook'=>'facebook' ,
 'twitter'=>'twitter',
 'payment'=>'payment',
+"home_rent_module"=>'Home Rent',
+'home_rent_feature'=>'Home Rent Feature',
     // Company fields
     'company_name_en' => 'Company Name (English)',
     'company_name_en_placeholder' => 'Enter the company name in English',

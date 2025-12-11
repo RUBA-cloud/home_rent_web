@@ -41,7 +41,8 @@ return [
        'modules'=>'الوحدات',
        'orders'=>'الطلبات',
        'order_status'=>'خالات الطلب',
-       'company_delivery'=>'شركات التوصيل'
-
+       'company_delivery'=>'شركات التوصيل',
+'home_rent'=>'تأجير المنازل',
+'home_rent_feature'=>'ميزة تأجير المنازل',
 
 ];

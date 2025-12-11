@@ -23,6 +23,8 @@
         'company_branch_module'    => __('adminlte::adminlte.company_branch_module'),
         'company_category_module'  => __('adminlte::adminlte.company_category_module'),
         'company_type_module'      => __('adminlte::adminlte.company_type_module'),
+        'home_rent_module'=>__('adminlte::adminlte.home_rent_module'),
+        'home_rent_feature_module'=>__('adminlte::adminlte.home_rent_feature_module'),
         'company_size_module'      => __('adminlte::adminlte.company_size_module'),
         'company_offers_type_module' => __('adminlte::adminlte.company_offers_type_module'),
         'company_offers_module'    => __('adminlte::adminlte.company_offers_module'),

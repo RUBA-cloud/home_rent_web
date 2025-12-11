@@ -16,7 +16,7 @@ use App\Http\Controllers\{
     OfferController, OfferTypeController, ModulesController, TypeController,
     PermissionController, OrderController, RegionController, PaymentController,
     OrderStatusController, CompanyDeliveryController, NotificationController,
-    DeviceTokenController, ProfileController, ChatController
+    DeviceTokenController, ProfileController, ChatController, HomeRentFeatureController, HomeRentController
 };
 
 /*
@@ -404,7 +404,7 @@ Route::middleware([SetLocale::class])->group(function () {
             ->name('company_delivery.')
             ->middleware('module:company_delivery_module')
             ->group(function () {
-                Route::get('/',                   'index')->name('index');
+                Route::get('/{isHistory?}',                   'index')->name('index');
                 Route::get('/create',             'create')->middleware('perm:company_delivery_module,can_add')->name('create');
                 Route::post('/',                  'store')->middleware('perm:company_delivery_module,can_add')->name('store');
                 Route::get('/{company_delivery}', 'show')->name('show');
@@ -496,6 +496,38 @@ Route::middleware([SetLocale::class])->group(function () {
                 Route::get('/{id}', 'show')->name('show');
             });
     });
+Route::controller(HomeRentFeatureController::class)
+            ->prefix('homeRentFeatures')
+            ->name('homeRentFeatures.')
+            ->middleware('module:home_rent_feature_module')
+            ->group(function () {
+                Route::get('/',               'index')->name('index');
+                                                Route::get('/{home}', 'show')->name('show');
+
+                Route::get('/create',         'create')->middleware('perm:home_rent_feature_module,can_add')->name('create');
+                Route::post('/',              'store')->middleware('perm:home_rent_feature_module,can_add')->name('store');
+                Route::get('/{home}/edit','edit')->middleware('perm:home_rent_feature_module,can_edit')->name('edit');
+                Route::put('/{home}', 'update')->middleware('perm:home_rent_feature_module,can_edit')->name('update');
+                Route::delete('/{home}','destroy')->middleware('perm:home_rent_feature_module,can_delete')->name('destroy');
+                Route::get('/history/{isHistory?}', 'history')->middleware('perm:home_rent_feature_module,can_view_history')->name('history');
+                Route::post('/restore','reactivate')->middleware('perm:home_rent_feature_module,can_edit')->name('restore');
+            });
+Route::controller(HomeRentController::class)
+            ->prefix('homeRent')
+            ->name('homeRent.')
+            ->middleware('module:home_rent_module')
+            ->group(function () {
+                Route::get('/',               'index')->name('index');
+                Route::get('/create',         'create')->middleware('perm:home_rent_module,can_add')->name('create');
+                Route::post('/',              'store')->middleware('perm:home_rent_module,can_add')->name('store');
+                Route::get('/{home}', 'show')->name('show');
+                Route::get('/{home}/edit','edit')->middleware('perm:home_rent_module,can_edit')->name('edit');
+                Route::put('/{home}', 'update')->middleware('perm:home_rent_module,can_edit')->name('update');
+                Route::delete('/{home}','destroy')->middleware('perm:home_rent_module,can_delete')->name('destroy');
+                Route::get('/history/{isHistory?}', 'index')->middleware('perm:home_rent_module,can_view_history')->name('history');
+                Route::post('/search',        'search')->middleware('perm:home_rent_module,can_view_history')->name('search');
+                Route::post('/restore',       'restore')->middleware('perm:home_rent_module,can_edit')->name('restore');
+            });
 
     /*
     |----------------------------------------------------------------------
