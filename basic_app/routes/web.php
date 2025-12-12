@@ -501,10 +501,13 @@ Route::controller(HomeRentFeatureController::class)
             ->name('homeRentFeatures.')
             ->middleware('module:home_rent_feature_module')
             ->group(function () {
+                                Route::get('/create',         'create')->middleware('perm:home_rent_feature_module,can_add')->name('create');
+
                 Route::get('/',               'index')->name('index');
-                                                Route::get('/{home}', 'show')->name('show');
 
                 Route::get('/create',         'create')->middleware('perm:home_rent_feature_module,can_add')->name('create');
+                               Route::get('/{home}', 'show')->name('show');
+
                 Route::post('/',              'store')->middleware('perm:home_rent_feature_module,can_add')->name('store');
                 Route::get('/{home}/edit','edit')->middleware('perm:home_rent_feature_module,can_edit')->name('edit');
                 Route::put('/{home}', 'update')->middleware('perm:home_rent_feature_module,can_edit')->name('update');

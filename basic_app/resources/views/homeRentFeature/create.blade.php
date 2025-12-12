@@ -22,7 +22,7 @@
 @include('homeRentFeature.form', [
             'action'     => route('homeRentFeatures.store'),
             'method'     => 'POST',
-            'delivery' => null,
+            'homeFeature' => null,
         ])
 
     </div>

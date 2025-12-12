@@ -11,7 +11,16 @@ return [
 'twitter'=>'twitter',
 'payment'=>'payment',
 "home_rent_module"=>'Home Rent',
+'view_video'=>'View Video',
 'home_rent_feature'=>'Home Rent Feature',
+'bedrooms_number'=>'Number of Bedrooms',
+'bathrooms_number'=>'Number of Bathrooms',
+'longitude'=>'Longitude',
+'latitude'=>'Latitude',
+'home_rent_details'=>'Home Rent Details',
+'price'=>'Price',
+'rent_price'=>'Rent Price',
+'average_rating'=>'Average Rating',
     // Company fields
     'company_name_en' => 'Company Name (English)',
     'company_name_en_placeholder' => 'Enter the company name in English',
@@ -116,6 +125,8 @@ return [
     'country'=>'Country',
     'city'=>'City',
     'unread'=>'unread',
+    'bedrooms'=>'bedrooms',
+    'bathrooms'=>'bathrooms',
 
     // Form
     'company_info_form' => 'Company Info Form',
@@ -168,6 +179,7 @@ return [
             'copyright'      => '© :year :app. All rights reserved.',
 
     // Actions (more)
+    'video' => 'Video',
     'save_information' => 'Save Information',
     'save_changes' => 'Save Changes',
     'cancel' => 'Cancel',

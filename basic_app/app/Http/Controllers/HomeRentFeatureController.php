@@ -39,38 +39,37 @@ class HomeRentFeatureController extends Controller
      */
 
     public function reactivate($id){
+
         $homeFeature = HomeFeatureHistory::withTrashed()->findOrFail($id);
         $homeFeature->restore();
+        $homeFeature->user_id = auth()->id();
+        $homeFeature->is_active = true;
+        $homeFeature->save();
 
         return redirect()
-            ->route('homeRentFeature.index')
+            ->route('homeRentFeatures.index')
             ->with('success', 'Home feature reactivated successfully.');
     }
     public function store(HomeFeatureRentRequest $request)
     {
+        $validated = $request->validated();
         // Handle image upload
         if ($request->hasFile('image')) {
             $imagePath = $request->file('image')
                 ->store('home_rent_images', 'public');
+ $validated['image'] = $request->getSchemeAndHttpHost() . '/storage/' . $imagePath;
 
-            $request->merge(['image_path' => $imagePath]);
         }
 
-        $request['user_id'] = auth()->id();
+        $validated['user_id'] = auth()->id();
 
         // Create feature
-        $homeFeature = HomeFeature::create($request->all());
+        $homeFeature = HomeFeature::create($validated);
 
-        // 🔹 Save history (created)
-        HomeFeatureHistory::create([
-            'home_feature_id' => $homeFeature->id,
-            'user_id'         => auth()->id(),
-            'action'          => 'created',
-            'data'            => $homeFeature->toArray(),
-        ]);
+
 
         return redirect()
-            ->route('homeRentFeature.index')
+            ->route('homeRentFeatures.index')
             ->with('success', 'Home feature created successfully.');
     }
 
@@ -104,6 +103,7 @@ class HomeRentFeatureController extends Controller
      */
     public function update(HomeFeatureRentRequest $request, string $id)
     {
+        $validated = $request->validated();
         $homeFeature = HomeFeature::findOrFail($id);
 
         // 🔹 Save old data BEFORE update
@@ -113,12 +113,14 @@ class HomeRentFeatureController extends Controller
         if ($request->hasFile('image')) {
             $imagePath = $request->file('image')
                 ->store('home_rent_images', 'public');
-            $request->merge(['image_path' => $imagePath]);
-        }
-$oldData = $homeFeature->toArray();
-$oldData['user_id'] = auth()->id();
+                 $validated['image'] = $request->getSchemeAndHttpHost() . '/storage/' . $imagePath;
+            }$oldData = $homeFeature->toArray();
+            $oldData['user_id'] = auth()->id();
         $histories = HomeFeatureHistory::create($oldData);
-        $homeFeature->update($request->all());
+        $homeFeature->update($validated);
+        try {
+            broadcast(new HomeRentFeatureEventSent($homeFeature));
+        } catch (\Throwable $e) {}
         return redirect()
             ->route('homeRentFeatures.index')
             ->with('success', 'Home feature updated successfully.');
@@ -136,6 +138,8 @@ $oldData['user_id'] = auth()->id();
         $oldData['user_id'] = auth()->id();
         $histories = HomeFeatureHistory::create($oldData);
         $histories->user_id = auth()->id();
+        $histories->is_active = false;
+        $histories->save();
         // Delete
 
         $homeFeature->delete();

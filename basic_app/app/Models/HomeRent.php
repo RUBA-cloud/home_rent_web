@@ -3,12 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-
+use App\Models\HomeRentFeature;
 class HomeRent extends Model
 {
     protected function features()
     {
-        return $this->hasMany(HomeRentFeature::class);
+        return $this->hasMany(HomeFeature::class);
     }
     public function homeFeatures()
     {

@@ -19,4 +19,5 @@ class HomeRentHistory extends Model
     }
 
 
+
 }

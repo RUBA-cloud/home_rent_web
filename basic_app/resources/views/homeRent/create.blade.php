@@ -19,10 +19,10 @@
                 </ul>
             </div>
         @endif
-@include('homeRent.form', [
+        @include('homeRent.form', [
             'action'     => route('homeRent.store'),
             'method'     => 'POST',
-            'delivery' => null,
+            'homeRent' => null,
         ])
 
     </div>

@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('name_en');
             $table->string('name_ar');
             $table->text('description_en')->nullable();
+            $table->text('description_ar')->nullable();
             $table->string('image')->nullable();
 
             // 👤 User relation

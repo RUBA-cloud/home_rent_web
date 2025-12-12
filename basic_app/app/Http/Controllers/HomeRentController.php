@@ -5,72 +5,164 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Http\Requests\HomeRentRequest;
 use App\Models\HomeRent;
+use App\Models\HomeRentHistory;
+use App\Models\Category;
 use App\Models\HomeFeature;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use App\Events\HomeRentEvent;
+
 class HomeRentController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index($isHistory = false)
+    // /homeRent?isHistory=1
+    public function index(Request $request)
     {
-        $homeRents = HomeRent::with('user')->paginate(5);
-        return view('homeRent.index', compact('homeRents'));
-    }
+        $isHistory = $request->boolean('isHistory');
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-        $homeFeatures = HomeFeature::where('is_active', true)->get();
-        return view('homeRent.create', compact('homeFeatures'));
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(HomeRentRequest $request)
-    {
-        //
-        if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('home_rent_images', 'public');
-            $request->merge(['image_path' => $imagePath]);
+        if ($isHistory) {
+            $homeRents = HomeRentHistory::with('user')->paginate(5);
+        } else {
+            $homeRents = HomeRent::with('user')->paginate(5);
         }
 
-        $homeRent = HomeRent::create($request->all());
-        return redirect()->route('homeRent.index')->with('success', 'Home rent created successfully.');
+        return view('homeRent.index', compact('homeRents', 'isHistory'));
     }
 
-    /**
-     * Display the specified resource.
-     */
+    public function create()
+    {
+        $categories   = Category::where('is_active', true)->get();
+        $homeFeatures = HomeFeature::where('is_active', true)->get();
+
+        return view('homeRent.create', [
+            'categories'   => $categories,
+            'homeFeatures' => $homeFeatures,
+            'homeRent'     => new HomeRent(),
+        ]);
+    }
+
+    public function store(HomeRentRequest $request)
+    {
+        $data = $request->validated();
+
+        if ($request->hasFile('image')) {
+            $data['image'] = $request->file('image')->store('home_rent_images', 'public');
+        }
+
+        if ($request->hasFile('video')) {
+            $data['video'] = $request->file('video')->store('home_rent_videos', 'public');
+        }
+
+        $data['user_id'] = $data['user_id'] ?? Auth::id();
+
+        $homeRent = HomeRent::create($data);
+
+        // if ($request->filled('home_rent_features')) {
+        //     $homeRent->features()->sync($request->input('home_rent_features'));
+        // }
+
+        return redirect()
+            ->route('homeRent.index')
+            ->with('success', 'Home rent created successfully.');
+    }
+
     public function show(string $id)
     {
-        //
+        $isHistory = false;
+
+        $homeRent = HomeRent::find($id);
+
+        if (! $homeRent) {
+            $homeRent = HomeRentHistory::where('home_rent_id', $id)
+                ->latest('created_at')
+                ->firstOrFail();
+            $isHistory = true;
+        }
+
+        return view('homeRent.show', compact('homeRent', 'isHistory'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(string $id)
     {
-        //
+        $homeRent     = HomeRent::findOrFail($id);
+        $categories   = Category::where('is_active', true)->get();
+        $homeFeatures = HomeFeature::where('is_active', true)->get();
+
+        return view('homeRent.edit', [
+            'homeRent'     => $homeRent,
+            'categories'   => $categories,
+            'homeFeatures' => $homeFeatures,
+        ]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    public function update(HomeRentRequest $request, string $id)
     {
-        //
+        $homeRent = HomeRent::findOrFail($id);
+
+        DB::transaction(function () use ($request, $homeRent) {
+            $data = $request->validated();
+
+            // ---- Save history snapshot ----
+            $historyData                 = $homeRent->toArray();
+            $historyData['home_rent_id'] = $homeRent->id;
+            $historyData['action']       = 'update';
+            $historyData['performed_by'] = Auth::id();
+
+            HomeRentHistory::create($historyData);
+
+            // ---- Handle files ----
+            if ($request->hasFile('image')) {
+                $data['image'] = $request->file('image')->store('home_rent_images', 'public');
+            }
+
+            if ($request->hasFile('video')) {
+                $data['video'] = $request->file('video')->store('home_rent_videos', 'public');
+            }
+
+            // ---- Update main record ----
+            $homeRent->update($data);
+
+            // if ($request->filled('home_rent_features')) {
+            //     $homeRent->features()->sync($request->input('home_rent_features'));
+            // }
+
+            // ---- Broadcast update event ----
+            try {
+                $freshHomeRent = $homeRent->fresh();
+                broadcast(new HomeRentEvent($freshHomeRent));
+            } catch (\Throwable $e) {
+                Log::warning('HomeRentUpdated broadcast failed: ' . $e->getMessage());
+            }
+        });
+
+        return redirect()
+            ->route('homeRent.index')
+            ->with('success', 'Home rent updated successfully.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $id)
     {
-        //
+        $homeRent = HomeRent::findOrFail($id);
+try {
+            broadcast(new HomeRentEvent($homeRent));
+            DB::transaction(function () use ($homeRent) {
+            $historyData                 = $homeRent->toArray();
+            $historyData['home_rent_id'] = $homeRent->id;
+            $historyData['action']       = 'delete';
+            $historyData['performed_by'] = Auth::id();
+            $historyData['is_active']    =false;
+
+            HomeRentHistory::create($historyData);
+
+            $homeRent->delete();
+        });
+
+        }
+        catch (\Throwable $e) {}
+
+        return redirect()
+            ->route('homeRent.index')
+            ->with('success', 'Home rent deleted and archived successfully.');
     }
 }
