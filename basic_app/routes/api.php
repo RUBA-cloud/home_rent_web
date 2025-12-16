@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\CompanyBranchController;
 use App\Http\Middleware\JWTAuthMiddleware;
 use Illuminate\Support\Facades\Broadcast;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\HomeController;
 use App\Http\Controllers\Api\FilterApiController;
 use App\Http\Controllers\Api\FaviorateController;
 use App\Http\Controllers\Api\CartController;
@@ -38,7 +39,7 @@ Route::middleware([JWTAuthMiddleware::class])->group(function () {
     Route::get('user', function (Request $request) {
         return response()->json($request->user());
     });
-    Route::get('categories',[CategoryController::class,'index']);
+    Route::get('categories',[HomeController::class,'index']);
     Route::get('category/{id}',[CategoryController::class,'show']);
   Route::post('category_search', [CategoryController::class, 'search']);
 

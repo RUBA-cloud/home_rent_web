@@ -31,6 +31,7 @@ return [
 'view_video'=>'عرض الفيديو',
 'home_rent_details'=>'تفاصيل تأجير المنازل',
 'price'=>'السعر',
+'features'=>'الميزات',
 'rent_price'=>'سعر الإيجار',
     // Company Details
     'company_info_details' => 'تفاصيل معلومات الشركة',

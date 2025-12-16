@@ -42,30 +42,7 @@ class HomeRentController extends Controller
         ]);
     }
 
-    public function store(HomeRentRequest $request)
-    {
-        $data = $request->validated();
 
-        if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')->store('home_rent_images', 'public');
-        }
-
-        if ($request->hasFile('video')) {
-            $data['video'] = $request->file('video')->store('home_rent_videos', 'public');
-        }
-
-        $data['user_id'] = $data['user_id'] ?? Auth::id();
-
-        $homeRent = HomeRent::create($data);
-
-        // if ($request->filled('home_rent_features')) {
-        //     $homeRent->features()->sync($request->input('home_rent_features'));
-        // }
-
-        return redirect()
-            ->route('homeRent.index')
-            ->with('success', 'Home rent created successfully.');
-    }
 
     public function show(string $id)
     {
@@ -82,6 +59,43 @@ class HomeRentController extends Controller
 
         return view('homeRent.show', compact('homeRent', 'isHistory'));
     }
+    public function store(HomeRentRequest $request)
+{
+    $data = $request->validated();
+
+    DB::transaction(function () use ($request, &$data, &$homeRent) {
+
+        // ✅ Upload image (store full URL)
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('home_rent_images', 'public');
+            $data['image'] = $request->getSchemeAndHttpHost() . '/storage/' . $path;
+        }
+
+        // ✅ Upload video (store full URL)
+        if ($request->hasFile('video')) {
+            $path = $request->file('video')->store('home_rent_videos', 'public');
+            $data['video'] = $request->getSchemeAndHttpHost() . '/storage/' . $path;
+        }
+
+        // ✅ Set user
+        $data['user_id'] = $data['user_id'] ?? Auth::id();
+
+        // ✅ Create home rent
+        $homeRent = HomeRent::create($data);
+
+        // ✅ Sync many-to-many features
+        // IMPORTANT: make sure your form input name = home_rent_features[]
+        $featureIds = $request->input('home_rent_features', []);
+        if (is_array($featureIds)) {
+            $homeRent->homeFeatures()->sync($featureIds);
+        }
+    });
+
+    return redirect()
+        ->route('homeRent.index')
+        ->with('success', 'Home rent created successfully.');
+}
+
 
     public function edit(string $id)
     {
@@ -123,9 +137,9 @@ class HomeRentController extends Controller
             // ---- Update main record ----
             $homeRent->update($data);
 
-            // if ($request->filled('home_rent_features')) {
-            //     $homeRent->features()->sync($request->input('home_rent_features'));
-            // }
+            if ($request->filled('home_rent_features')) {
+                $homeRent->features()->sync($request->input('home_rent_features'));
+            }
 
             // ---- Broadcast update event ----
             try {

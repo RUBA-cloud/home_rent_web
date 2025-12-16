@@ -16,11 +16,17 @@ class HomeFeature extends Model
         return $this->belongsTo(User::class);
     }
 
-public function users()
-    {
-        return $this->hasOne(User::class);
-    }
 
+
+public function homeFeatures()
+{
+    return $this->belongsToMany(
+        HomeFeature::class,
+        'home_rent_home_feature',
+        'home_rent_id',
+        'home_feature_id'
+    )->withTimestamps();
+}
 
 
 }

@@ -105,65 +105,84 @@ class AuthApiController extends Controller
      * Login a user and return JWT token.
      */
     public function login(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'email'        => 'required|email',
-            'password'     => 'required|string',
-            'device_token' => 'nullable|string',
-            'language'     => 'nullable|string|in:en,ar',
-        ]);
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'validation_error',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
+{
+    $validator = Validator::make($request->all(), [
+        'email'        => ['required', 'email'],
+        'password'     => ['required', 'string'],
+        'device_token' => ['nullable', 'string'],
+        'language'     => ['nullable', 'string', 'in:en,ar'],
 
-        $credentials = $request->only(['email', 'password']);
-        if (!Auth::attempt($credentials)) {
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
+        // ✅ location
+        'longitude'    => ['required', 'numeric', 'between:-180,180'],
+        'latitude'     => ['required', 'numeric', 'between:-90,90'],
+    ]);
 
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-
-        if (method_exists($user, 'hasVerifiedEmail') && !$user->hasVerifiedEmail()) {
-            return response()->json(['error' => 'Email not verified'], 403);
-        }
-
-        try {
-            if ($request->filled('device_token') && Schema::hasColumn('users', 'device_token')) {
-                $user->device_token = $request->string('device_token');
-            }
-            if ($request->filled('language') && Schema::hasColumn('users', 'language')) {
-                $user->language = $request->string('language');
-            }
-            $user->save();
-        } catch (\Throwable $e) {}
-
-        $now = new CarbonImmutable();
-        $expiry = $now->addHours(24);
-
-        $token = $this->jwtConfig->builder()
-            ->issuedBy(config('app.url'))
-            ->permittedFor(config('app.url'))
-            ->issuedAt($now)
-            ->canOnlyBeUsedAfter($now)
-            ->expiresAt($expiry)
-            ->relatedTo((string) $user->id)
-            ->withClaim('email', $user->email)
-            ->getToken(
-                $this->jwtConfig->signer(),
-                $this->jwtConfig->signingKey()
-            );
-$user->access_token = $token->toString();
+    if ($validator->fails()) {
         return response()->json([
-            'data'         => $user,
-            'token_type'   => 'Bearer',
-            'expires_in'   => $expiry->diffInSeconds($now),
-        ], 200);
+            'status' => 'validation_error',
+            'errors' => $validator->errors(),
+        ], 422);
     }
 
+    $credentials = $request->only(['email', 'password']);
+    if (!Auth::attempt($credentials)) {
+        return response()->json(['error' => 'Unauthorized'], 401);
+    }
+
+    /** @var \App\Models\User $user */
+    $user = Auth::user();
+
+    if (method_exists($user, 'hasVerifiedEmail') && !$user->hasVerifiedEmail()) {
+        return response()->json(['error' => 'Email not verified'], 403);
+    }
+
+    try {
+        // ✅ save optional fields
+        if ($request->filled('device_token') && Schema::hasColumn('users', 'device_token')) {
+            $user->device_token = (string) $request->input('device_token');
+        }
+
+        if ($request->filled('language') && Schema::hasColumn('users', 'language')) {
+            $user->language = (string) $request->input('language');
+        }
+
+        // ✅ save location
+        if (Schema::hasColumn('users', 'longitude')) {
+            $user->longitude = (float) $request->input('longitude');
+        }
+        if (Schema::hasColumn('users', 'latitude')) {
+            $user->latitude = (float) $request->input('latitude');
+        }
+
+        $user->save();
+    } catch (\Throwable $e) {
+        // ignore optional column errors
+    }
+
+    $now = new CarbonImmutable();
+    $expiry = $now->addHours(24);
+
+    $token = $this->jwtConfig->builder()
+        ->issuedBy(config('app.url'))
+        ->permittedFor(config('app.url'))
+        ->issuedAt($now)
+        ->canOnlyBeUsedAfter($now)
+        ->expiresAt($expiry)
+        ->relatedTo((string) $user->id)
+        ->withClaim('email', $user->email)
+        ->getToken(
+            $this->jwtConfig->signer(),
+            $this->jwtConfig->signingKey()
+        );
+
+    $user->access_token = $token->toString();
+
+    return response()->json([
+        'data'       => $user,
+        'token_type' => 'Bearer',
+        'expires_in' => $expiry->diffInSeconds($now),
+    ], 200);
+}
 
     /**
      * Update language/theme settings.
