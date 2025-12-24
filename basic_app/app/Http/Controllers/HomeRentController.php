@@ -9,23 +9,19 @@ use App\Models\HomeRentHistory;
 use App\Models\Category;
 use App\Models\HomeFeature;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use App\Events\HomeRentEvent;
 
 class HomeRentController extends Controller
 {
-    // /homeRent?isHistory=1
     public function index(Request $request)
     {
         $isHistory = $request->boolean('isHistory');
 
-        if ($isHistory) {
-            $homeRents = HomeRentHistory::with('user')->paginate(5);
-        } else {
-            $homeRents = HomeRent::with('user')->paginate(5);
-        }
+        $homeRents = $isHistory
+            ? HomeRentHistory::with('user')->paginate(5)
+            : HomeRent::with('user')->paginate(5);
 
         return view('homeRent.index', compact('homeRents', 'isHistory'));
     }
@@ -42,64 +38,68 @@ class HomeRentController extends Controller
         ]);
     }
 
+    public function store(HomeRentRequest $request)
+    {
+        $data = $request->validated();
 
+        DB::transaction(function () use ($request, $data) {
+
+            // ✅ Upload image as full URL
+            if ($request->hasFile('image')) {
+                $path = $request->file('image')->store('home_rent_images', 'public');
+                $data['image'] = $request->getSchemeAndHttpHost() . '/storage/' . $path;
+            }
+
+            // ✅ Upload video as full URL
+            if ($request->hasFile('video')) {
+                $path = $request->file('video')->store('home_rent_videos', 'public');
+                $data['video'] = $request->getSchemeAndHttpHost() . '/storage/' . $path;
+            }
+
+            $data['user_id'] = $data['user_id'] ?? Auth::id();
+
+            /** @var HomeRent $homeRent */
+            $homeRent = HomeRent::create($data);
+
+            // ✅ Sync pivot features
+            $featureIds = $request->input('home_rent_features', []);
+            if (is_array($featureIds)) {
+                $homeRent->homeFeatures()->sync($featureIds);
+            }
+
+            // ✅ Broadcast create event (optional)
+            try {
+                broadcast(new HomeRentEvent($homeRent->fresh(['user','category','homeFeatures'])));
+            } catch (\Throwable $e) {
+                Log::warning('HomeRentCreated broadcast failed: ' . $e->getMessage());
+            }
+        });
+
+        return redirect()
+            ->route('homeRent.index')
+            ->with('success', 'Home rent created successfully.');
+    }
 
     public function show(string $id)
     {
         $isHistory = false;
 
-        $homeRent = HomeRent::find($id);
+        $homeRent = HomeRent::with(['user','category','homeFeatures'])->find($id);
 
-        if (! $homeRent) {
+        if (!$homeRent) {
             $homeRent = HomeRentHistory::where('home_rent_id', $id)
                 ->latest('created_at')
                 ->firstOrFail();
             $isHistory = true;
         }
 
+
         return view('homeRent.show', compact('homeRent', 'isHistory'));
     }
-    public function store(HomeRentRequest $request)
-{
-    $data = $request->validated();
-
-    DB::transaction(function () use ($request, &$data, &$homeRent) {
-
-        // ✅ Upload image (store full URL)
-        if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('home_rent_images', 'public');
-            $data['image'] = $request->getSchemeAndHttpHost() . '/storage/' . $path;
-        }
-
-        // ✅ Upload video (store full URL)
-        if ($request->hasFile('video')) {
-            $path = $request->file('video')->store('home_rent_videos', 'public');
-            $data['video'] = $request->getSchemeAndHttpHost() . '/storage/' . $path;
-        }
-
-        // ✅ Set user
-        $data['user_id'] = $data['user_id'] ?? Auth::id();
-
-        // ✅ Create home rent
-        $homeRent = HomeRent::create($data);
-
-        // ✅ Sync many-to-many features
-        // IMPORTANT: make sure your form input name = home_rent_features[]
-        $featureIds = $request->input('home_rent_features', []);
-        if (is_array($featureIds)) {
-            $homeRent->homeFeatures()->sync($featureIds);
-        }
-    });
-
-    return redirect()
-        ->route('homeRent.index')
-        ->with('success', 'Home rent created successfully.');
-}
-
 
     public function edit(string $id)
     {
-        $homeRent     = HomeRent::findOrFail($id);
+        $homeRent     = HomeRent::with('homeFeatures')->findOrFail($id);
         $categories   = Category::where('is_active', true)->get();
         $homeFeatures = HomeFeature::where('is_active', true)->get();
 
@@ -113,38 +113,40 @@ class HomeRentController extends Controller
     public function update(HomeRentRequest $request, string $id)
     {
         $homeRent = HomeRent::findOrFail($id);
+        $data = $request->validated();
 
-        DB::transaction(function () use ($request, $homeRent) {
-            $data = $request->validated();
+        DB::transaction(function () use ($request, $homeRent, $data) {
 
-            // ---- Save history snapshot ----
+            // ✅ Save history snapshot BEFORE update
             $historyData                 = $homeRent->toArray();
             $historyData['home_rent_id'] = $homeRent->id;
             $historyData['action']       = 'update';
             $historyData['performed_by'] = Auth::id();
-
             HomeRentHistory::create($historyData);
 
-            // ---- Handle files ----
+            // ✅ Handle files (full URL)
             if ($request->hasFile('image')) {
-                $data['image'] = $request->file('image')->store('home_rent_images', 'public');
-            }
+                $path = $request->file('image')->store('home_rent_images', 'public');
+                $data['image'] = asset('storage/' . $path);
+                        }
 
             if ($request->hasFile('video')) {
-                $data['video'] = $request->file('video')->store('home_rent_videos', 'public');
+                $path = $request->file('video')->store('home_rent_videos', 'public');
+                $data['video'] = asset('storage/' . $path);
             }
 
-            // ---- Update main record ----
+            // ✅ Update main record
             $homeRent->update($data);
 
-            if ($request->filled('home_rent_features')) {
-                $homeRent->features()->sync($request->input('home_rent_features'));
+            // ✅ Sync pivot features (FIXED)
+            $featureIds = $request->input('home_rent_features', []);
+            if (is_array($featureIds)) {
+                $homeRent->homeFeatures()->sync($featureIds);
             }
 
-            // ---- Broadcast update event ----
+            // ✅ Broadcast update event (optional)
             try {
-                $freshHomeRent = $homeRent->fresh();
-                broadcast(new HomeRentEvent($freshHomeRent));
+                broadcast(new HomeRentEvent($homeRent->fresh(['user','category','homeFeatures'])));
             } catch (\Throwable $e) {
                 Log::warning('HomeRentUpdated broadcast failed: ' . $e->getMessage());
             }
@@ -158,22 +160,29 @@ class HomeRentController extends Controller
     public function destroy(string $id)
     {
         $homeRent = HomeRent::findOrFail($id);
-try {
-            broadcast(new HomeRentEvent($homeRent));
-            DB::transaction(function () use ($homeRent) {
+
+        DB::transaction(function () use ($homeRent) {
+
+            // ✅ Save history snapshot BEFORE delete
             $historyData                 = $homeRent->toArray();
             $historyData['home_rent_id'] = $homeRent->id;
             $historyData['action']       = 'delete';
             $historyData['performed_by'] = Auth::id();
-            $historyData['is_active']    =false;
+            $historyData['is_active']    = false;
 
             HomeRentHistory::create($historyData);
 
+            // ✅ Detach pivot features then delete
+            $homeRent->homeFeatures()->detach();
             $homeRent->delete();
-        });
 
-        }
-        catch (\Throwable $e) {}
+            // ✅ Broadcast delete event (optional)
+            try {
+                broadcast(new HomeRentEvent($homeRent));
+            } catch (\Throwable $e) {
+                Log::warning('HomeRentDeleted broadcast failed: ' . $e->getMessage());
+            }
+        });
 
         return redirect()
             ->route('homeRent.index')

@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\HomeLocationRentRequest;
 use App\Models\Category;
+use App\Models\HomeRent;
+use Illuminate\Http\Request;
 
 class HomeController extends Controller
 {
@@ -21,8 +24,8 @@ class HomeController extends Controller
         $lat = (float) $user->latitude;
         $lng = (float) $user->longitude;
 
-        $radius = 50; // km
-        $limit  = 20;
+        $radius = (float) request()->get('radius', 50); // km (optional query param)
+        $limit  = (int) request()->get('limit', 20);
 
         $distanceSql = "(6371 * acos(
             cos(radians(?)) * cos(radians(home_rents.latitude)) *
@@ -34,12 +37,13 @@ class HomeController extends Controller
             ->where('is_active', 1)
             ->with(['homes' => function ($q) use ($distanceSql, $lat, $lng, $radius, $limit) {
                 $q->where('is_available', 1)
+                  ->where('is_available', 1)
                   ->whereNotNull('home_rents.latitude')
                   ->whereNotNull('home_rents.longitude')
-                  ->with(['user', 'homeFeatures']) // ✅ load both
+                  ->with(['user', 'homeFeatures'])
                   ->select('home_rents.*')
                   ->selectRaw("$distanceSql AS distance_km", [$lat, $lng, $lat])
-                  ->having('distance_km', '<=', $radius)
+                  ->havingRaw('distance_km <= ?', [$radius])
                   ->orderBy('distance_km', 'asc')
                   ->limit($limit);
             }])
@@ -50,6 +54,47 @@ class HomeController extends Controller
         return response()->json([
             'status' => true,
             'data'   => $categories,
+        ]);
+    }
+
+    /**
+     * Get nearby homes by latitude/longitude from request
+     * POST body: { "latitude": 31.95, "longitude": 35.93 }
+     * Optional query: ?radius=50&limit=20&category_id=1
+     */
+    public function getHome(HomeLocationRentRequest $request)
+    {
+        $lat = (float) $request->latitude;
+        $lng = (float) $request->longitude;
+
+        $radius = (float) $request->query('radius', 50); // km
+        $limit  = (int) $request->query('limit', 20);
+
+        $categoryId = $request->query('category_id'); // optional filter
+
+        $distanceSql = "(6371 * acos(
+            cos(radians(?)) * cos(radians(home_rents.latitude)) *
+            cos(radians(home_rents.longitude) - radians(?)) +
+            sin(radians(?)) * sin(radians(home_rents.latitude))
+        ))";
+
+        $homes = HomeRent::query()
+            ->where('is_available', 1)
+            ->where('is_available', 1)
+            ->when($categoryId, fn($q) => $q->where('category_id', (int)$categoryId))
+            ->whereNotNull('home_rents.latitude')
+            ->whereNotNull('home_rents.longitude')
+            ->with(['user', 'homeFeatures', 'category'])
+            ->select('home_rents.*')
+            ->selectRaw("$distanceSql AS distance_km", [$lat, $lng, $lat])
+            ->havingRaw('distance_km <= ?', [$radius])
+            ->orderBy('distance_km', 'asc')
+            ->limit($limit)
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data'   => $homes,
         ]);
     }
 }

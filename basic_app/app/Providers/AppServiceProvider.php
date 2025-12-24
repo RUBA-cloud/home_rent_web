@@ -12,16 +12,31 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Notifications\Messages\MailMessage;
-
 use App\Helpers\CustomSettings;
-use App\Helpers\MenuBuilder;
+use App\Helpers\MenuBuilder; use Twilio\Rest\Client;
 
 class AppServiceProvider extends ServiceProvider
 {
-    public function register(): void
-    {
-        //
-    }
+
+
+public function register(): void
+{
+    $this->app->singleton(Client::class, function () {
+        $sid   = config('services.twilio.sid');
+        $token = config('services.twilio.token');
+
+        // ✅ This avoids "username is required" and tells you what's missing
+        if (blank($sid) || blank($token)) {
+            throw new \RuntimeException(
+                'Twilio config missing. Set TWILIO_SID and TWILIO_TOKEN in .env then run: php artisan optimize:clear'
+            );
+        }
+
+        return new Client($sid, $token);
+    });
+}
+
+
 
     public function boot(): void
     {
@@ -56,6 +71,9 @@ class AppServiceProvider extends ServiceProvider
                 return $defaults;
             }
         };
+        $this->app->singleton(Client::class, function () {
+        return new Client(env('TWILIO_SID'), env('TWILIO_TOKEN'));
+    });
 
         // Verify Email
         VerifyEmail::toMailUsing(function ($notifiable, string $url) use ($resolveColors) {

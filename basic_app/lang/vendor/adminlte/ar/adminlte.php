@@ -33,6 +33,8 @@ return [
 'price'=>'السعر',
 'features'=>'الميزات',
 'rent_price'=>'سعر الإيجار',
+'avaliable'=>'متاحة',
+
     // Company Details
     'company_info_details' => 'تفاصيل معلومات الشركة',
     'company_info_updated' => 'تم تحديث معلومات الشركة بنجاح.',

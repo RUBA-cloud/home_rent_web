@@ -13,6 +13,7 @@ return [
 "home_rent_module"=>'Home Rent',
 'view_video'=>'View Video',
 'features'=>'Features',
+'avaliable'=>'is Avaliable',
 'home_rent_feature'=>'Home Rent Feature',
 'bedrooms_number'=>'Number of Bedrooms',
 'bathrooms_number'=>'Number of Bathrooms',

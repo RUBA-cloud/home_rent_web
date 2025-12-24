@@ -14,12 +14,8 @@ class HomeRent extends Model
         'number_of_bedrooms', 'number_of_bathrooms',
         'rent_price', 'description_en', 'description_ar',
         'is_available', 'image', 'video', 'user_id',
-        'features', 'average_rating',
-    ];
-
-    // If you still store IDs in `features` column as JSON (optional)
-    protected $casts = [
-        'features' => 'array',
+        'average_rating','payment_status','address_en',
+        'address_ar','size'
     ];
 
     public function user()
@@ -32,10 +28,7 @@ class HomeRent extends Model
         return $this->belongsTo(Category::class, 'category_id');
     }
 
-    /**
-     * ✅ Many-to-many (pivot table)
-     * pivot: home_rent_home_feature (home_rent_id, home_feature_id)
-     */
+    // ✅ Many-to-Many Features
     public function homeFeatures()
     {
         return $this->belongsToMany(
@@ -44,24 +37,5 @@ class HomeRent extends Model
             'home_rent_id',
             'home_feature_id'
         )->withTimestamps();
-    }
-
-    /**
-     * ✅ Accessor (ONLY if you use `features` column to store IDs)
-     * call: $home->features_models
-     */
-    public function getFeaturesModelsAttribute()
-    {
-        $ids = $this->features ?? [];
-
-        if (is_string($ids)) {
-            $ids = array_filter(array_map('intval', explode(',', $ids)));
-        }
-
-        if (!is_array($ids) || empty($ids)) {
-            return collect();
-        }
-
-        return HomeFeature::whereIn('id', $ids)->get();
     }
 }

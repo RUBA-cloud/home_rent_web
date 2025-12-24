@@ -1,5 +1,5 @@
 @extends('adminlte::page')
-@section('title', __('adminlte::adminlte.create') . ' ' . __('adminlte::adminlte.hone_rent_module'))
+@section('title', __('adminlte::adminlte.create') . ' ' . __('adminlte::adminlte.home_rent_module'))
 
 @section('content')
 <div style="min-height: 100vh; display: flex;">

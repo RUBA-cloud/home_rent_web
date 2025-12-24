@@ -21,7 +21,7 @@
                 $fields = [
                     ['key' => 'name_en', 'label' => __('adminlte::adminlte.name_en')],
                     ['key' => 'name_ar', 'label' => __('adminlte::adminlte.name_ar')],
-                    ['key' => 'is_active', 'label' => __('adminlte::adminlte.active'), 'type' => 'bool'],
+                    ['key' => 'is_available', 'label' => __('adminlte::adminlte.active'), 'type' => 'bool'],
                     ['key' => 'user.name', 'label' => __('adminlte::adminlte.user_name')],
                     ['key' => 'user.id', 'label' => __('adminlte::adminlte.user_id')],
                 ];

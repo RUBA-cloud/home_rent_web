@@ -50,5 +50,9 @@ return [
         'secret' => env('JWT_SECRET', ''),    // set in .env
         'algo'   => env('JWT_ALGO', 'HS256'), // optional; default HS256
     ],
-
+'twilio' => [
+        'sid'       => env('TWILIO_SID'),
+        'token'     => env('TWILIO_TOKEN'),
+        'verify_sid'=> env('TWILIO_VERIFY_SID'),
+    ],
 ];

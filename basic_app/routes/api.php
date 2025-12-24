@@ -14,6 +14,8 @@ use App\Http\Controllers\Api\FilterApiController;
 use App\Http\Controllers\Api\FaviorateController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\PhoneAuthController;
+
 
 Route::prefix('auth')->group(function () {
     Route::post('register', [AuthApiController::class, 'register']);
@@ -21,6 +23,9 @@ Route::prefix('auth')->group(function () {
     Route::post('forgot-password', [AuthApiController::class, 'forgotPassword']);
     Route::post('resend-forgot-password', [AuthApiController::class, 'resendForgotPassword']);
     Route::post('resend-verify_email', [AuthApiController::class, 'resendVerificationEmail']);
+    Route::post('phone',[PhoneAuthController::class,'sendOtp']);
+  Route::post('sms',[PhoneAuthController::class,'sendsms']);
+
 });
     Route::get('company-info', [CompanyInfoController::class, 'index']);
 
@@ -60,6 +65,8 @@ Route::middleware([JWTAuthMiddleware::class])->group(function () {
 
     Route::post('make_order',[OrderController::class,'store']);
     Route::get('orders',[OrderController::class,'index']);
+    Route::post('home_rent/search',[HomeController::class,'getHome']);
+
 
 
 });

@@ -4,19 +4,29 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class HomeFeatureHistory extends Model
+class HomeFeature extends Model
 {
-protected $table = 'home_feature_histories';
-protected $fillable = ['name_en', 'name_ar', 'description_en','description_ar',
-    'image', 'user_id', 'is_active', 'image',];
+    protected $table = 'home_features';
+
+    protected $fillable = [
+        'name_en','name_ar',
+        'description_en','description_ar',
+        'image','user_id','is_active',
+    ];
 
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id');
     }
 
-public function users()
+    // ✅ Many-to-Many Homes
+    public function homeRents()
     {
-        return $this->hasOne(User::class);
+        return $this->belongsToMany(
+            HomeRent::class,
+            'home_rent_home_feature',
+            'home_feature_id',
+            'home_rent_id'
+        )->withTimestamps();
     }
 }

@@ -3,60 +3,76 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class HomeRentRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
         return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
         return [
-            // checkbox (hidden 0 + checkbox 1) → sometimes|boolean is enough
-            'is_active' => ['sometimes', 'boolean'],
+            'name_en'     => ['required', 'string', 'max:255'],
+            'name_ar'     => ['required', 'string', 'max:255'],
+            'category_id' => ['required', 'integer', 'exists:categories,id'],
 
-            'name_en' => ['required', 'string', 'max:255'],
-            'name_ar' => ['required', 'string', 'max:255'],
+            'address_en'  => ['required', 'string', 'max:255'],
+            'address_ar'  => ['required', 'string', 'max:255'],
+
+            'longitude'   => ['nullable', 'numeric', 'between:-180,180'],
+            'latitude'    => ['nullable', 'numeric', 'between:-90,90'],
+
+            'number_of_bedrooms'  => ['nullable', 'integer', 'min:0'],
+            'number_of_bathrooms' => ['nullable', 'integer', 'min:0'],
+
+            'rent_price'  => ['nullable', 'numeric', 'min:0'],
+            'price'       => ['nullable', 'numeric', 'min:0'],
 
             'description_en' => ['nullable', 'string'],
             'description_ar' => ['nullable', 'string'],
 
-            // IMAGE (2MB)
-            'image' => ['nullable', 'image', 'max:2048'],
+            // checkbox (optional)
+            'is_available' => ['sometimes', 'boolean'],
+            'size'=>['required'],
 
-            // PRICE (column is usually rent_price)
-            'rent_price' => ['required', 'numeric', 'min:0'],
+            // files
+            'image' => ['nullable', 'image', 'max:2048'], // 2MB
+            'video' => [
+                'nullable',
+                'file',
+                'max:10240', // 10MB (KB)
+                'mimetypes:video/mp4,video/webm,video/ogg',
+            ],
 
-            // LOCATION
-            'latitude'  => ['required', 'numeric', 'between:-90,90'],
-            'longitude' => ['required', 'numeric', 'between:-180,180'],
-
-            // FEATURES (IDs from home_features table via multi-select)
-            'home_rent_features'   => ['nullable', 'array'],
+            // Many-to-many feature IDs
+            'home_rent_features'   => ['sometimes', 'array'],
             'home_rent_features.*' => ['integer', 'exists:home_features,id'],
 
-            // ROOMS
-            'number_of_bedrooms'  => ['required', 'integer', 'min:0'],
-            'number_of_bathrooms' => ['required', 'integer', 'min:0'],
+            // payment period: daily | monthly
+            'payment_way' => ['nullable', 'string', Rule::in(['daily', 'monthly'])],
 
-            // USER (we usually fill from Auth, so nullable is ok)
-            'user_id' => ['nullable', 'exists:users,id'],
-
-            // CATEGORY
-            'category_id' => ['required', 'exists:categories,id'],
-
-            // VIDEO (e.g. up to ~50MB)
-            'video' => ['nullable', 'file', 'mimes:mp4,mov,avi,wmv'],
+            // payment status: 0 unpaid | 1 paid | 2 pending
+            'payment_status' => ['nullable', 'integer', Rule::in([0, 1, 2])],
         ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'home_rent_features.*.exists' => 'One or more selected features are invalid.',
+            'payment_way.in'             => 'Payment period must be daily or monthly.',
+            'payment_status.in'          => 'Payment status must be unpaid, paid, or pending.',
+        ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'is_available'   => $this->has('is_available') ? $this->boolean('is_available') : null,
+            'payment_status' => $this->filled('payment_status') ? (int) $this->input('payment_status') : null,
+        ]);
     }
 }
