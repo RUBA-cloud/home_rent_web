@@ -12,8 +12,15 @@ class HomeRentRequest extends FormRequest
         return true;
     }
 
+    protected function isUpdate(): bool
+    {
+        return in_array($this->method(), ['PUT', 'PATCH'], true);
+    }
+
     public function rules(): array
     {
+        $isUpdate = $this->isUpdate();
+
         return [
             'name_en'     => ['required', 'string', 'max:255'],
             'name_ar'     => ['required', 'string', 'max:255'],
@@ -22,40 +29,45 @@ class HomeRentRequest extends FormRequest
             'address_en'  => ['required', 'string', 'max:255'],
             'address_ar'  => ['required', 'string', 'max:255'],
 
-            'longitude'   => ['nullable', 'numeric', 'between:-180,180'],
-            'latitude'    => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude'   => ['required', 'numeric', 'between:-180,180'],
+            'latitude'    => ['required', 'numeric', 'between:-90,90'],
 
-            'number_of_bedrooms'  => ['nullable', 'integer', 'min:0'],
-            'number_of_bathrooms' => ['nullable', 'integer', 'min:0'],
+            'number_of_bedrooms'  => ['required', 'integer', 'min:0'],
+            'number_of_bathrooms' => ['required', 'integer', 'min:0'],
 
-            'rent_price'  => ['nullable', 'numeric', 'min:0'],
-            'price'       => ['nullable', 'numeric', 'min:0'],
+            'rent_price'  => ['required', 'numeric', 'min:0'],
 
-            'description_en' => ['nullable', 'string'],
-            'description_ar' => ['nullable', 'string'],
+            'description_en' => ['required', 'string'],
+            'description_ar' => ['required', 'string'],
 
-            // checkbox (optional)
+            'size' => ['required', 'string', 'max:255'],
+
             'is_available' => ['sometimes', 'boolean'],
-            'size'=>['required'],
+            'is_feature' => ['sometimes', 'boolean'],
 
-            // files
-            'image' => ['nullable', 'image', 'max:2048'], // 2MB
+            // ✅ Create: required | Update: nullable (keep old if not uploaded)
+            'image' => [
+                $isUpdate ? 'nullable' : 'required',
+                'image',
+                'max:2048',
+            ],
+
+
             'video' => [
-                'nullable',
+                $isUpdate ? 'nullable' : 'required',
                 'file',
-                'max:10240', // 10MB (KB)
+                'max:10240',
                 'mimetypes:video/mp4,video/webm,video/ogg',
             ],
 
-            // Many-to-many feature IDs
+            // ✅ IMPORTANT:
+            // - Create: sometimes|array (or required if you want)
+            // - Update: sometimes|array (if field missing => keep old)
             'home_rent_features'   => ['sometimes', 'array'],
             'home_rent_features.*' => ['integer', 'exists:home_features,id'],
 
-            // payment period: daily | monthly
-            'payment_way' => ['nullable', 'string', Rule::in(['daily', 'monthly'])],
-
-            // payment status: 0 unpaid | 1 paid | 2 pending
-            'payment_status' => ['nullable', 'integer', Rule::in([0, 1, 2])],
+            'payment_way' => ['required', 'string', Rule::in(['daily', 'monthly'])],
+            'payment_status' => ['required', 'integer', Rule::in([0, 1, 2])],
         ];
     }
 
@@ -65,14 +77,20 @@ class HomeRentRequest extends FormRequest
             'home_rent_features.*.exists' => 'One or more selected features are invalid.',
             'payment_way.in'             => 'Payment period must be daily or monthly.',
             'payment_status.in'          => 'Payment status must be unpaid, paid, or pending.',
+            'image.required'             => 'Image is required when creating.',
+            'video.required'             => 'Video is required when creating.',
         ];
     }
 
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'is_available'   => $this->has('is_available') ? $this->boolean('is_available') : null,
+            'is_available'   => $this->has('is_available') ? (int) $this->boolean('is_available') : 0,
             'payment_status' => $this->filled('payment_status') ? (int) $this->input('payment_status') : null,
         ]);
+
+        // ✅ DO NOT set home_rent_features if it's missing on update
+        // (so controller can "keep old")
+        // If it exists but empty, that's intentional (user cleared it).
     }
 }

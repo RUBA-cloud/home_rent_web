@@ -14,13 +14,16 @@ use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Notifications\Messages\MailMessage;
 use App\Helpers\CustomSettings;
 use App\Helpers\MenuBuilder; use Twilio\Rest\Client;
-
+use App\Models\Cashier\User;
+use Laravel\Cashier\Cashier;
 class AppServiceProvider extends ServiceProvider
 {
 
 
 public function register(): void
 {
+        Cashier::useCustomerModel(User::class);
+
     $this->app->singleton(Client::class, function () {
         $sid   = config('services.twilio.sid');
         $token = config('services.twilio.token');

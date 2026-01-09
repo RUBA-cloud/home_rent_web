@@ -34,7 +34,7 @@ return [
 'features'=>'الميزات',
 'rent_price'=>'سعر الإيجار',
 'avaliable'=>'متاحة',
-
+'pick_location_on_map'=>'',
     // Company Details
     'company_info_details' => 'تفاصيل معلومات الشركة',
     'company_info_updated' => 'تم تحديث معلومات الشركة بنجاح.',
@@ -90,6 +90,45 @@ return [
     'edit' => 'تعديل',
     'delete' => 'حذف',
     'confirm_delete_module' => 'هل تريد حذف إعداد الوحدات هذا؟',
+      'create_home_rent' => 'إضافة عقار للإيجار',
+    'edit_home_rent' => 'تعديل بيانات العقار',
+    'fill_home_details' => 'املأ بيانات العقار ثم احفظ التغييرات.',
+
+    // Sections
+    'basic_information' => 'المعلومات الأساسية',
+    'basic_information_help' => 'اسم العقار ووصفه وعنوانه باللغتين.',
+    'details' => 'التفاصيل',
+    'details_help' => 'عدد الغرف والحمامات والمساحة.',
+
+    'features_status' => 'المميزات والحالة',
+    'features_status_help' => 'اختاري مميزات العقار وحالة التفعيل.',
+    'select_multiple_features' => 'يمكنك اختيار أكثر من ميزة.',
+
+    'pricing_classification' => 'التسعير والتصنيف',
+    'pricing_help' => 'حدد الأسعار وفترة الدفع وحالة الدفع والتصنيف.',
+
+    // Payment
+    'payment_period' => 'فترة الدفع',
+    'payment_status' => 'حالة الدفع',
+    'daily' => 'يومي',
+    'monthly' => 'شهري',
+    'unpaid' => 'غير مدفوع',
+    'pending' => 'قيد المعالجة',
+    'paid' => 'مدفوع',
+
+    // Media
+    'media' => 'الوسائط',
+    'media_help' => 'ارفع صورة وفيديو للعقار.',
+    'supports_video' => 'يدعم MP4 / WEBM / OGG',
+    'is_feature'=>'مميز',
+    // Map
+    'pick_location_on_map' => 'تحديد الموقع على الخريطة',
+    'pick_location_help' => 'اضغطي على الخريطة أو اسحبي العلامة لاختيار الموقع.',
+    'pick_location_hint' => 'اختاري الموقع وسيتم حفظ الإحداثيات تلقائياً.',
+    'my_location' => 'موقعي الحالي',
+    'clear' => 'مسح',
+    'geo_not_supported' => 'المتصفح لا يدعم تحديد الموقع.',
+    'geo_denied' => 'تعذّر الحصول على موقعك. فعّلي صلاحية الموقع من المتصفح.',
 
     // Pill labels
     'module_dashboard' => 'لوحة التحكم',

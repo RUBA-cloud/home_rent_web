@@ -11,150 +11,114 @@ use Illuminate\Support\Facades\Auth;
 
 class FaviorateController extends Controller
 {
-    /**
-     * قائمة المفضلة للمستخدم الحالي
-     */
     public function index(): JsonResponse
     {
         $userId = Auth::id();
-
         if (!$userId) {
-            return response()->json([
-                'message' => 'Unauthenticated.',
-            ], 401);
+            return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        // FIXED: where() usage
-        $favorites = FaviorateModel::with('product')
+        $favorites = FaviorateModel::query()
+            ->with([
+                'homes',
+                'homes.homeFeatures',   // ✅ features
+                'homes.category',       // (اختياري)
+            ])
             ->where('user_id', $userId)
+            ->latest()
             ->get();
 
         return response()->json([
             'message' => 'Favorites list retrieved successfully.',
-            'data'    => $favorites,
+            'data' => $favorites,
         ], 200);
     }
 
-    /**
-     * بحث في المفضلة للمستخدم الحالي
-     * مثال: /api/favorites/search?search=iphone
-     */
     public function search(Request $request): JsonResponse
     {
         $userId = Auth::id();
-
         if (!$userId) {
-            return response()->json([
-                'message' => 'Unauthenticated.',
-            ], 401);
+            return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
         $search = trim((string) $request->input('search', ''));
 
-        // لو مافي كلمة بحث رجّع نفس نتيجة index
-        if ($search === '') {
-            $favorites = FaviorateModel::with('product')
-                ->where('user_id', $userId)
-                ->where('is_active', true)
-                ->get();
+        $q = FaviorateModel::query()
+            ->with(['home', 'home.homeFeatures', 'home.category'])
+            ->where('user_id', $userId);
 
-            return response()->json([
-                'message' => 'Favorites list retrieved successfully.',
-                'data'    => $favorites,
-            ], 200);
+        // إذا عندك عمود is_active
+        if (schema_has_column('faviorate_models', 'is_active')) {
+            $q->where('is_active', true);
         }
 
-        // نفترض أن حقل اسم المنتج هو name_en / name_ar داخل علاقة product
-        $favorites = FaviorateModel::with('product')
-            ->where('user_id', $userId)
-            ->where('is_active', true)
-            ->whereHas('product', function ($q) use ($search) {
-                $q->where(function ($qq) use ($search) {
-                    $qq->where('name_en', 'like', "%{$search}%")
-                       ->orWhere('name_ar', 'like', "%{$search}%");
-                });
-            })
-            ->get();
+        if ($search !== '') {
+            $q->whereHas('home', function ($qq) use ($search) {
+                $qq->where('name_en', 'like', "%{$search}%")
+                   ->orWhere('name_ar', 'like', "%{$search}%");
+            });
+        }
+
+        $favorites = $q->latest()->get();
 
         return response()->json([
             'message' => 'Favorites search retrieved successfully.',
-            'data'    => $favorites,
+            'data' => $favorites,
         ], 200);
     }
 
-    /**
-     * إضافة منتج إلى المفضلة
-     */
-
-    public function clearAllFaviorate(){
-         $userId = Auth::id();
-
+    public function clearAllFaviorate(): JsonResponse
+    {
+        $userId = Auth::id();
         if (!$userId) {
-            return response()->json([
-                'message' => 'Unauthenticated.',
-            ], 401);
+            return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        // FIXED: where() usage
-        $favorites = FaviorateModel::with('product')
-            ->where('user_id', $userId)
-            ->delete();
+        $deletedCount = FaviorateModel::where('user_id', $userId)->delete();
 
         return response()->json([
             'message' => 'Favorites list removed successfully.',
-            'data'    => $favorites,
+            'deleted' => $deletedCount,
         ], 200);
-
     }
+
     public function addFaviorate(FaviorateRequest $request): JsonResponse
     {
         $userId = Auth::id();
-
         if (!$userId) {
-            return response()->json([
-                'message' => 'Unauthenticated.',
-            ], 401);
+            return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        // Validate request data
         $data = $request->validated();
 
-        // Check if product is already in favorites
         $exists = FaviorateModel::where('user_id', $userId)
-            ->where('product_id', $data['product_id'])
-            ->where('is_active', true) // لو عندك toggle للمفضلة
+            ->where('home_id', $data['home_id'])
+            ->when(schema_has_column('faviorate_models', 'is_active'), fn($q) => $q->where('is_active', true))
             ->exists();
 
         if ($exists) {
             return response()->json([
-                'message' => 'Product already added to favorites.',
-            ], 403); // أو 200 حسب ما تفضلين
+                'message' => 'Home already added to favorites.',
+            ], 409);
         }
 
-        // Add new favorite
         $favorite = FaviorateModel::create([
-            'user_id'    => $userId,
-            'product_id' => $data['product_id'],
-            // 'is_active'  => true, // لو عندك عمود is_active و default مش مفعّل
+            'user_id' => $userId,
+            'home_id' => $data['home_id'],
+            ...(schema_has_column('faviorate_models', 'is_active') ? ['is_active' => true] : []),
         ]);
 
         return response()->json([
-            'message' => 'Product added to favorites successfully.',
-            'data'    => $favorite->load('product'),
+            'message' => 'Home added to favorites successfully.',
+            'data' => $favorite->load(['homes', 'homes.homeFeatures', 'homes.category']),
         ], 201);
     }
 
-    /**
-     * حذف منتج من المفضلة باستخدام ID الخاص بالمفضلة
-     */
     public function removeFaviorate($id): JsonResponse
     {
         $userId = Auth::id();
-
         if (!$userId) {
-            return response()->json([
-                'message' => 'Unauthenticated.',
-            ], 401);
+            return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
         $favorite = FaviorateModel::where('user_id', $userId)
@@ -162,9 +126,7 @@ class FaviorateController extends Controller
             ->first();
 
         if (!$favorite) {
-            return response()->json([
-                'message' => 'Favorite not found.',
-            ], 404);
+            return response()->json(['message' => 'Favorite not found.'], 404);
         }
 
         $favorite->delete();
@@ -174,45 +136,52 @@ class FaviorateController extends Controller
         ], 200);
     }
 
-    /**
-     * حذف منتج من المفضلة باستخدام product_id
-     */
-    public function removeProductFaviorate($id): JsonResponse
+    public function removeProductFaviorate($homeId): JsonResponse
     {
         $userId = Auth::id();
-
         if (!$userId) {
             return response()->json([
-                'status'  => false,
+                'status' => false,
                 'message' => 'Unauthenticated.',
-                'data'    => null,
+                'data' => null,
             ], 401);
         }
 
-        // نجيب الفيفوريت + المنتج لو عندك علاقة product
-        $favorite = FaviorateModel::with('product')
+        $favorite = FaviorateModel::with(['homes', 'homes.homeFeatures', 'homes.category'])
             ->where('user_id', $userId)
-            ->where('product_id', $id)
+            ->where('home_id', $homeId)
             ->first();
 
         if (!$favorite) {
             return response()->json([
-                'status'  => false,
+                'status' => false,
                 'message' => 'Favorite not found.',
-                'data'    => null,
+                'data' => null,
             ], 404);
         }
 
-        // نأخذ نسخة من الداتا قبل الحذف
         $deletedFavorite = $favorite->toArray();
-
-        // نحذف السجل
         $favorite->delete();
 
         return response()->json([
-            'status'  => true,
+            'status' => true,
             'message' => 'Favorite removed successfully.',
-            'data'    => $deletedFavorite,
+            'data' => $deletedFavorite,
         ], 200);
+    }
+}
+
+/**
+ * ✅ helper (بدون ما نكسّر مشروعك)
+ * إذا ما بدك helper، احذف where is_active من فوق وخلاص.
+ */
+if (!function_exists('schema_has_column')) {
+    function schema_has_column(string $table, string $column): bool
+    {
+        try {
+            return \Illuminate\Support\Facades\Schema::hasColumn($table, $column);
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 }

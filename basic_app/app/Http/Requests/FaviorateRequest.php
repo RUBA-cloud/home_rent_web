@@ -22,7 +22,7 @@ class FaviorateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'product_id' => 'required|exists:products,id',
+            'home_id' => 'required|exists:home_rents,id',
         ];
     }
 }

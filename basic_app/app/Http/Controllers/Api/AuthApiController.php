@@ -105,84 +105,65 @@ class AuthApiController extends Controller
      * Login a user and return JWT token.
      */
     public function login(Request $request)
-{
-    $validator = Validator::make($request->all(), [
-        'email'        => ['required', 'email'],
-        'password'     => ['required', 'string'],
-        'device_token' => ['nullable', 'string'],
-        'language'     => ['nullable', 'string', 'in:en,ar'],
+    {
+        $validator = Validator::make($request->all(), [
+            'email'        => 'required|email',
+            'password'     => 'required|string',
+            'device_token' => 'nullable|string',
+            'language'     => 'nullable|string|in:en,ar',
+        ]);
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'validation_error',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
 
-        // ✅ location
-        'longitude'    => ['required', 'numeric', 'between:-180,180'],
-        'latitude'     => ['required', 'numeric', 'between:-90,90'],
-    ]);
+        $credentials = $request->only(['email', 'password']);
+        if (!Auth::attempt($credentials)) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
 
-    if ($validator->fails()) {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        if (method_exists($user, 'hasVerifiedEmail') && !$user->hasVerifiedEmail()) {
+            return response()->json(['error' => 'Email not verified'], 403);
+        }
+
+        try {
+            if ($request->filled('device_token') && Schema::hasColumn('users', 'device_token')) {
+                $user->device_token = $request->string('device_token');
+            }
+            if ($request->filled('language') && Schema::hasColumn('users', 'language')) {
+                $user->language = $request->string('language');
+            }
+            $user->save();
+        } catch (\Throwable $e) {}
+
+        $now = new CarbonImmutable();
+        $expiry = $now->addHours(24);
+
+        $token = $this->jwtConfig->builder()
+            ->issuedBy(config('app.url'))
+            ->permittedFor(config('app.url'))
+            ->issuedAt($now)
+            ->canOnlyBeUsedAfter($now)
+            ->expiresAt($expiry)
+            ->relatedTo((string) $user->id)
+            ->withClaim('email', $user->email)
+            ->getToken(
+                $this->jwtConfig->signer(),
+                $this->jwtConfig->signingKey()
+            );
+$user->access_token = $token->toString();
         return response()->json([
-            'status' => 'validation_error',
-            'errors' => $validator->errors(),
-        ], 422);
+            'data'         => $user,
+            'token_type'   => 'Bearer',
+            'expires_in'   => $expiry->diffInSeconds($now),
+        ], 200);
     }
 
-    $credentials = $request->only(['email', 'password']);
-    if (!Auth::attempt($credentials)) {
-        return response()->json(['error' => 'Unauthorized'], 401);
-    }
-
-    /** @var \App\Models\User $user */
-    $user = Auth::user();
-
-    if (method_exists($user, 'hasVerifiedEmail') && !$user->hasVerifiedEmail()) {
-        return response()->json(['error' => 'Email not verified'], 403);
-    }
-
-    try {
-        // ✅ save optional fields
-        if ($request->filled('device_token') && Schema::hasColumn('users', 'device_token')) {
-            $user->device_token = (string) $request->input('device_token');
-        }
-
-        if ($request->filled('language') && Schema::hasColumn('users', 'language')) {
-            $user->language = (string) $request->input('language');
-        }
-
-        // ✅ save location
-        if (Schema::hasColumn('users', 'longitude')) {
-            $user->longitude = (float) $request->input('longitude');
-        }
-        if (Schema::hasColumn('users', 'latitude')) {
-            $user->latitude = (float) $request->input('latitude');
-        }
-
-        $user->save();
-    } catch (\Throwable $e) {
-        // ignore optional column errors
-    }
-
-    $now = new CarbonImmutable();
-    $expiry = $now->addHours(24);
-
-    $token = $this->jwtConfig->builder()
-        ->issuedBy(config('app.url'))
-        ->permittedFor(config('app.url'))
-        ->issuedAt($now)
-        ->canOnlyBeUsedAfter($now)
-        ->expiresAt($expiry)
-        ->relatedTo((string) $user->id)
-        ->withClaim('email', $user->email)
-        ->getToken(
-            $this->jwtConfig->signer(),
-            $this->jwtConfig->signingKey()
-        );
-
-    $user->access_token = $token->toString();
-
-    return response()->json([
-        'data'       => $user,
-        'token_type' => 'Bearer',
-        'expires_in' => $expiry->diffInSeconds($now),
-    ], 200);
-}
 
     /**
      * Update language/theme settings.
@@ -414,105 +395,87 @@ class AuthApiController extends Controller
      * - file:   avatar        (image)
      * - string: avatar_path   (URL or relative storage path) [optional alternative]
      */
+
+
     public function updateProfile(Request $request)
-    {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-        if (!$user) {
-            // If you hit this with 403/401: ensure this is an API route with Bearer auth.
-            return response()->json(['error' => 'Unauthenticated'], 401);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'name'    => 'nullable|string|max:255',
-            'email'   => 'nullable|string|email|max:255|unique:users,email,' . $user->id,
-            'street'  => 'nullable|string|max:255',
-            'address' => 'nullable|string|max:255',
-            'phone'   => [
-                'nullable','string','max:255',
-                Rule::unique('users', 'phone')->ignore($user->id),
-                'regex:/^\+?[0-9\s\-\(\)]{7,20}$/',
-            ],
-            'avatar'      => 'nullable|image|mimes:jpg,jpeg,png,gif,webp|max:2048',
-            'avatar_path' => 'nullable|string|max:1024',
-        ]);
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'validation_error',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $emailChanged = false;
-
-        if ($request->filled('name'))    { $user->name    = (string) $request->string('name'); }
-        if ($request->filled('street'))  { $user->street  = (string) $request->string('street'); }
-        if ($request->filled('address')) { $user->address = (string) $request->string('address'); }
-        if ($request->filled('phone'))   { $user->phone   = (string) $request->string('phone'); }
-
-        if ($request->filled('email') && $request->string('email') !== $user->email) {
-            $user->email = (string) $request->string('email');
-            if (Schema::hasColumn('users', 'email_verified_at')) {
-                $user->email_verified_at = null;
-                $emailChanged = true;
-            }
-        }
-
-        // ---- Avatar handling ----
-        $avatarUrl = null;
-
-        // Case 1: uploaded file under "avatar"
-        if ($request->hasFile('avatar')) {
-            $file = $request->file('avatar');
-            if ($file && $file->isValid()) {
-                // (Optional) delete old local file if you track it and it's on 'public' disk
-
-                $path = $file->store('users', 'public');   // storage/app/public/users/...
-                $user->avatar_path = $path;                // store relative path in DB
-                $avatarUrl = Storage::disk('public')->url($path); // full URL for response
-            }
-        }
-        // Case 2: client provides a URL/relative path in avatar_path
-        elseif ($request->filled('avatar_path')) {
-            $candidate = trim((string) $request->input('avatar_path'));
-            $user->avatar_path = $candidate;
-            $avatarUrl = Str::startsWith($candidate, ['http://','https://'])
-                ? $candidate
-                : Storage::disk('public')->url($candidate);
-        }
-
-        $user->save();
-
-        // (Optional) resend verification if email changed
-        if ($emailChanged && method_exists($user, 'sendEmailVerificationNotification')) {
-            try { $user->sendEmailVerificationNotification(); } catch (\Throwable $e) {}
-        }
-
-        // If avatarUrl not computed but DB has a value, compute it now
-        if (!$avatarUrl && $user->avatar_path) {
-            $avatarUrl = Str::startsWith($user->avatar_path, ['http://','https://'])
-                ? $user->avatar_path
-                : Storage::disk('public')->url($user->avatar_path);
-        }
-
-        return response()->json([
-            'message' => 'Profile updated successfully.',
-            'user'    => [
-                'id'          => $user->id,
-                'name'        => $user->name,
-                'email'       => $user->email,
-                'street'      => $user->street,
-                'address'     => $user->address,
-                'phone'       => $user->phone,
-                'avatar_path' => $user->avatar_path, // DB value (relative/URL)
-                'avatar_url'  => $avatarUrl,         // full URL for the client
-            ],
-        ], 200);
+{
+    /** @var \App\Models\User $user */
+    $user = Auth::user();
+    if (!$user) {
+        return response()->json(['error' => 'Unauthenticated'], 401);
     }
 
-    /**
-     * Change user password.
-     */
+    $validator = Validator::make($request->all(), [
+        'name'    => 'nullable|string|max:255',
+        'email'   => 'nullable|string|email|max:255|unique:users,email,' . $user->id,
+        'street'  => 'nullable|string|max:255',
+        'address' => 'nullable|string|max:255',
+        'phone'   => [
+            'nullable','string','max:255',
+            Rule::unique('users', 'phone')->ignore($user->id),
+            'regex:/^\+?[0-9\s\-\(\)]{7,20}$/',
+        ],
+        'avatar'      => 'nullable|image|mimes:jpg,jpeg,png,gif,webp|max:2048',
+        'avatar_path' => 'nullable|string|max:1024',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'status' => 'validation_error',
+            'errors' => $validator->errors(),
+        ], 422);
+    }
+
+    $emailChanged = false;
+
+    if ($request->filled('name'))    $user->name    = (string) $request->input('name');
+    if ($request->filled('street'))  $user->street  = (string) $request->input('street');
+    if ($request->filled('address')) $user->address = (string) $request->input('address');
+    if ($request->filled('phone'))   $user->phone   = (string) $request->input('phone');
+
+    if ($request->filled('email') && $request->input('email') !== $user->email) {
+        $user->email = (string) $request->input('email');
+        if (Schema::hasColumn('users', 'email_verified_at')) {
+            $user->email_verified_at = null;
+            $emailChanged = true;
+        }
+    }
+
+    // ================== AVATAR ==================
+    // إذا العميل بعث ملف avatar
+    if ($request->hasFile('avatar') && $request->file('avatar')->isValid()) {
+        // خزّن في public disk
+        $path = $request->file('avatar')->store('users', 'public'); // users/xxx.webp
+      $user->avatar_path = asset('storage/' . $path);
+
+        // زن "path" فقط داخل DB
+    }
+    // إذا العميل بعث avatar_path (رابط جاهز)
+    // elseif ($request->filled('avatar_path')) {
+    //     $user->avatar_path = trim((string) $request->input('avatar_path'));
+    // }
+    // ✅ إذا avatar null وما في avatar_path => لا تعمل شيء (تبقي الصورة القديمة)
+
+    $user->save();
+
+    if ($emailChanged && method_exists($user, 'sendEmailVerificationNotification')) {
+        try { $user->sendEmailVerificationNotification(); } catch (\Throwable $e) {}
+    }
+
+    // ================== RESPONSE URL ==================
+
+
+    return response()->json([
+        'message' => 'Profile updated successfully.',
+        'data' => $user
+
+
+    ], 200);
+}
+
+
+
+
     public function changePassword(Request $request)
     {
         /** @var \App\Models\User $user */
@@ -522,8 +485,8 @@ class AuthApiController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'current_password' => 'required|string',
-            'password'         => 'required|string|min:6|confirmed',
+            'old_password' => 'required|string',
+            'new_password'         => 'required|string|min:6|confirmed',
         ]);
         if ($validator->fails()) {
             return response()->json([

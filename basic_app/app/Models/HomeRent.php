@@ -15,7 +15,7 @@ class HomeRent extends Model
         'rent_price', 'description_en', 'description_ar',
         'is_available', 'image', 'video', 'user_id',
         'average_rating','payment_status','address_en',
-        'address_ar','size'
+        'address_ar','size','is_feature'
     ];
 
     public function user()
@@ -37,5 +37,9 @@ class HomeRent extends Model
             'home_rent_id',
             'home_feature_id'
         )->withTimestamps();
+    }
+
+    public function faviorates(){
+
     }
 }

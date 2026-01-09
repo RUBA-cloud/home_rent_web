@@ -24,6 +24,7 @@
         id="image"
     />
 
+
     {{-- Errors --}}
     @if ($errors->any())
         <div class="alert alert-danger mb-3">
@@ -86,7 +87,18 @@
             {{ __('adminlte::adminlte.is_active') }}
         </label>
     </div>
-
+  <div class="form-group my-3">
+        <input type="hidden" name="is_feature" value="0">
+        <label class="mb-0">
+            <input
+                type="checkbox"
+                name="is_feature"
+                value="1"
+                {{ old('is_feature', (int) data_get($homeRentFeature ?? null, 'is_feature', 1)) ? 'checked' : '' }}
+            >
+            {{ __('adminlte::adminlte.is_feature') }}
+        </label>
+    </div>
     <x-adminlte-button
         label="{{ __('adminlte::adminlte.save_information') }}"
         type="submit"

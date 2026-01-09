@@ -9,11 +9,14 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens; // ✅ هذا المهم
+use Laravel\Cashier\Billable;
+
 
 class User extends Authenticatable implements MustVerifyEmail
 {
     // ✅ بدالي HasSanctumTokens بـ HasApiTokens
     use HasApiTokens, HasFactory, Notifiable;
+    use Billable;
 
     protected $fillable = [
         'name',
