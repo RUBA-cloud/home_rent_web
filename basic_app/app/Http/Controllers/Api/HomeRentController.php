@@ -34,7 +34,7 @@ class HomeRentController extends Controller
             return response()->json([
                 'status'  => 'ok',
                 'message' => 'Home features retrieved.',
-                'data'    => $homeFeatures,
+                'data'    => $homeFeatures->items(),
             ], 200);
 
         } catch (Throwable $e) {
@@ -45,31 +45,30 @@ class HomeRentController extends Controller
             ], 500);
         }
     }
+public function categories(Request $request)
+{
+    $perPage = (int) $request->query('per_page', 10);
 
-    public function categories(Request $request)
-    {
-        $perPage = (int) $request->query('per_page', 10);
+    try {
+        $paginator = Category::query()
+            ->where('is_active', true)
+            ->latest()
+            ->paginate($perPage);
 
-        try {
-            $categories = Category::query()
-                ->where('is_active', true)
-                ->latest()
-                ->paginate($perPage);
+        return response()->json([
+            'status'  => 'ok',
+            'message' => 'Categories retrieved.',
+            'data'    => $paginator->items(), // ✅ فقط array
+        ], 200);
 
-            return response()->json([
-                'status'  => 'ok',
-                'message' => 'Categories retrieved.',
-                'data'    => $categories,
-            ], 200);
-
-        } catch (Throwable $e) {
-            return response()->json([
-                'status'  => 'error',
-                'message' => 'Failed to retrieve categories.',
-                'error'   => config('app.debug') ? $e->getMessage() : null,
-            ], 500);
-        }
+    } catch (Throwable $e) {
+        return response()->json([
+            'status'  => 'error',
+            'message' => 'Failed to retrieve categories.',
+            'error'   => config('app.debug') ? $e->getMessage() : null,
+        ], 500);
     }
+}
 
     public function store(HomeRentRequest $request)
     {

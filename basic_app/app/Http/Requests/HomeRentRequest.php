@@ -47,14 +47,14 @@ class HomeRentRequest extends FormRequest
 
             // ✅ Create: required | Update: nullable (keep old if not uploaded)
             'image' => [
-                $isUpdate ? 'nullable' : 'required',
+                $isUpdate ? 'nullable' : 'nullable',
                 'image',
                 'max:2048',
             ],
 
 
             'video' => [
-                $isUpdate ? 'nullable' : 'required',
+                $isUpdate ? 'nullable' : 'nullable',
                 'file',
                 'max:10240',
                 'mimetypes:video/mp4,video/webm,video/ogg',

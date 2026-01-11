@@ -97,6 +97,8 @@ Route::middleware([JWTAuthMiddleware::class])->group(function () {
 
  Route::get('/home_rent_categories',[HomeRentController::class,'categories']);
  Route::get('/home_rent_features',[HomeRentController::class,'features']);
+  Route::post('/home_rent_features/store',[HomeRentController::class,'store']);
+
 
 });
 
